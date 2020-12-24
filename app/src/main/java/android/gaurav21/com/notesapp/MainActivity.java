@@ -2,6 +2,7 @@ package android.gaurav21.com.notesapp;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Canvas;
 import android.os.Bundle;
 
 import com.firebase.ui.auth.AuthUI;
@@ -26,6 +27,9 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.util.Log;
@@ -37,6 +41,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import java.util.Date;
+
+import it.xabaras.android.recyclerview.swipedecorator.RecyclerViewSwipeDecorator;
 
 public class MainActivity extends AppCompatActivity implements FirebaseAuth.AuthStateListener, NotesRecyclerAdapter.NoteListener {
 
@@ -52,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         setSupportActionBar(toolbar);
 
         recyclerView = findViewById(R.id.recycleView);
+        recyclerView.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
 
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -165,15 +172,15 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
     protected void onStart() {
         super.onStart();
         FirebaseAuth.getInstance().addAuthStateListener(this);
-        if(notesRecyclerAdapter != null){
-            notesRecyclerAdapter.stopListening();
-        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
         FirebaseAuth.getInstance().removeAuthStateListener(this);
+        if(notesRecyclerAdapter != null){
+            notesRecyclerAdapter.stopListening();
+        }
     }
 
     @Override
@@ -203,6 +210,9 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         notesRecyclerAdapter = new NotesRecyclerAdapter(options, this);
         recyclerView.setAdapter(notesRecyclerAdapter);
         notesRecyclerAdapter.startListening();
+
+        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(simpleCallback);
+        itemTouchHelper.attachToRecyclerView(recyclerView);
     }
 
     @Override
@@ -249,4 +259,60 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
                 .setNegativeButton("Cancel", null)
                 .show();
     }
+
+    @Override
+    public void handleDeleteItem(DocumentSnapshot snapshot) {
+        final DocumentReference documentReference = snapshot.getReference();
+        final Note note = snapshot.toObject(Note.class);
+
+        documentReference.delete()
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+                    @Override
+                    public void onSuccess(Void aVoid) {
+                        Log.d(TAG, "onSuccess: item deleted");
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+
+                    }
+                });
+        Snackbar.make(recyclerView, "Item Deleted", Snackbar.LENGTH_LONG)
+                .setAction("UNDO", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        documentReference.set(note);
+                    }
+                })
+                .show();
+    }
+
+    ItemTouchHelper.SimpleCallback simpleCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+        @Override
+        public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+            return false;
+        }
+
+        @Override
+        public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            if(direction == ItemTouchHelper.LEFT){
+                Toast.makeText(MainActivity.this, "Deleting", Toast.LENGTH_SHORT).show();
+                NotesRecyclerAdapter.NoteViewHolder notesRecyclerAdapter = (NotesRecyclerAdapter.NoteViewHolder) viewHolder;
+                notesRecyclerAdapter.deleteItem();
+            }
+        }
+
+        @Override
+        public void onChildDraw(@NonNull Canvas c, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+
+            new RecyclerViewSwipeDecorator.Builder(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+                    .addBackgroundColor(ContextCompat.getColor(MainActivity.this, R.color.colorAccent))
+                    .addActionIcon(R.drawable.ic_baseline_delete_24)
+                    .create()
+                    .decorate();
+
+            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+        }
+    };
 }
