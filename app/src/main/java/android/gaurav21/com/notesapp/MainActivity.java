@@ -22,6 +22,7 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.core.OrderBy;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -203,7 +204,10 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
     private void initRecycleView(FirebaseUser user){
         Query query = FirebaseFirestore.getInstance()
                 .collection("notes")
-                .whereEqualTo("userId", user.getUid());
+                .whereEqualTo("userId", user.getUid())
+                .orderBy("completed", Query.Direction.ASCENDING)
+                .orderBy("created", Query.Direction.DESCENDING);
+
         FirestoreRecyclerOptions<Note> options = new FirestoreRecyclerOptions.Builder<Note>()
                 .setQuery(query, Note.class)
                 .build();
