@@ -145,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements FirebaseAuth.Auth
         switch(id){
             case R.id.action_profile:
                 Toast.makeText(this, "Profile", Toast.LENGTH_SHORT).show();
+                startActivity(new Intent(MainActivity.this, ProfileActivity.class));
                 // other method to logout FirebaseAuth.getInstance().signOut();
 
                 return true;
